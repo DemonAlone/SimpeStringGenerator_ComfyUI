@@ -29,7 +29,7 @@ Documentation = "https://github.com/DemonAlone/SimpeStringGenerator_ComfyUI/wiki
 
 [tool.comfy]
 PublisherId = "DemonAlone"
-DisplayName = "SimpeStringGenerator_ComfyUI"
+DisplayName = "DemonAlone-nodes-ComfyUI"
 Icon = ""
 includes = [] 
 # "requires-comfyui" = ">=1.0.0"  # ComfyUI version compatibility
