@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - master
     paths:
       - "pyproject.toml"
 
@@ -19,8 +18,8 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v4
-        with:
-          submodules: true
+       ## with:
+         ## submodules: true
       - name: Publish Custom Node
         uses: Comfy-Org/publish-node-action@v1
         with:
