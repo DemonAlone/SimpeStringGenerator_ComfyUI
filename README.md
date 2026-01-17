@@ -1,1 +1,1 @@
-A collection of nodes that provide dynamic dropdown selectors for Samplers, Schedulers, Checkpoints, and Diffusion Models, outputting a comma-separated string for use in XY plots. Created with the assistance of Google Gemini.
+This repository bundles a set of lightweight utility nodes for ComfyUI that were originally crafted to support XYZ‑plot pipelines but are broadly useful in any workflow. Created with the assistance of Google Gemini and GPT-OSS.
