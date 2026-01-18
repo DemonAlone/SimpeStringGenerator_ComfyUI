@@ -398,3 +398,110 @@ class ClipSkipSliderNode:
         an iterable of outputs.
         """
         return (value,)
+
+class PonyPrefixesNode:
+    
+    """
+    
+    Score     – 5 variants
+        "-"               → None
+        "Everything"      → "score_9, score_8_up, score_7_up, score_6_up, score_5_up, "
+        "Average"         → "score_9, score_8_up, score_7_up, score_6_up, score_5_up, "
+        "Good"            → "score_9, score_8_up, score_7_up, "
+        "Only the best"   → "score_9, "
+
+    Rating    – 4 variants
+        "-"               → None
+        "Safe"            → "rating_safe, "
+        "Questionable"    → "rating_questionable, "
+        "Explicit"        → "rating_explicit, "
+
+    Source    – 5 variants
+        "-"               → None
+        "Anime"           → "source_anime, "
+        "Furry"           → "source_furry, "
+        "Cartoon"         → "source_cartoon, "
+        "Pony"            → "source_pony, "
+
+   In results combined string (order: Score → Rating → Source).
+    """
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                # 1 list – Score
+                "score": (
+                    [
+                        "-",
+                        "Everything",
+                        "Average",
+                        "Good",
+                        "Only the best",
+                    ],
+                ),
+                # 2 list – Rating
+                "rating": (
+                    [
+                        "-",
+                        "Safe",
+                        "Questionable",
+                        "Explicit",
+                    ],
+                ),
+                # 3 list – Source
+                "source": (
+                    [
+                        "-",
+                        "Anime",
+                        "Furry",
+                        "Cartoon",
+                        "Pony",
+                    ],
+                ),
+            }
+        }
+
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("combined_string",)   # output name
+    FUNCTION = "generate"
+    CATEGORY = "utils"
+
+    # mappings
+    _SCORE_MAP = {
+        "Everything":     "score_9, score_8_up, score_7_up, score_6_up, score_5_up, ",
+        "Average":        "score_9, score_8_up, score_7_up, score_6_up, score_5_up, ",
+        "Good":           "score_9, score_8_up, score_7_up, ",
+        "Only the best":  "score_9, ",
+    }
+
+    _RATING_MAP = {
+        "Safe":          "rating_safe, ",
+        "Questionable":  "rating_questionable, ",
+        "Explicit":      "rating_explicit, ",
+    }
+
+    _SOURCE_MAP = {
+        "Anime":   "source_anime, ",
+        "Furry":   "source_furry, ",
+        "Cartoon": "source_cartoon, ",
+        "Pony":    "source_pony, ",
+    }
+
+    def generate(self, score="-", rating="-", source="-"):
+        """Comnining whole string"""
+        parts = []
+
+        if score != "-":
+            parts.append(self._SCORE_MAP.get(score, ""))
+
+        if rating != "-":
+            parts.append(self._RATING_MAP.get(rating, ""))
+
+        if source != "-":
+            parts.append(self._SOURCE_MAP.get(source, ""))
+
+        result = "".join(parts)
+
+        return (result,)
+    

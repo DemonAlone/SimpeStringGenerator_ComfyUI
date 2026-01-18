@@ -15,6 +15,7 @@ from .nodes import (
     TextConcatNode,
     LORASelectorNode,
     ClipSkipSliderNode,
+    PonyPrefixesNode,
 )
 
 NODE_CLASS_MAPPINGS = {
@@ -33,7 +34,8 @@ NODE_CLASS_MAPPINGS = {
     "StringToFloatNode": StringToFloatNode,
     "TextConcatNode": TextConcatNode,
     "LORASelectorNode": LORASelectorNode,
-    "ClipSkipSliderNode": ClipSkipSliderNode
+    "ClipSkipSliderNode": ClipSkipSliderNode,
+    "PonyPrefixesNode": PonyPrefixesNode,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -53,4 +55,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TextConcatNode": "Text Concatenator",
     "LORASelectorNode": "Dynamic LORA Selector",
     "ClipSkipSliderNode": "Clip Skip Slider",
+    "PonyPrefixesNode": "Rating, Score, Source for Pony",
 }
