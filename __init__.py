@@ -16,6 +16,7 @@ from .nodes import (
     LORASelectorNode,
     ClipSkipSliderNode,
     PonyPrefixesNode,
+    ImageResizeNode,
 )
 
 NODE_CLASS_MAPPINGS = {
@@ -36,6 +37,7 @@ NODE_CLASS_MAPPINGS = {
     "LORASelectorNode": LORASelectorNode,
     "ClipSkipSliderNode": ClipSkipSliderNode,
     "PonyPrefixesNode": PonyPrefixesNode,
+    "ImageResizeNode": ImageResizeNode,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -50,10 +52,11 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TextEncoderGeneratorNode": "Dynamic Encoder Selector",
     "VAESelectorNode": "Dynamic VAE Selector",
     "TextEncoderSelectorNode": "Dynamic Encoder Selector",
-     "StringToIntNode": "String → Integer",
-    "StringToFloatNode": "String → Float",
+     "StringToIntNode": "String to Integer",
+    "StringToFloatNode": "String to Float",
     "TextConcatNode": "Text Concatenator",
     "LORASelectorNode": "Dynamic LORA Selector",
     "ClipSkipSliderNode": "Clip Skip Slider",
     "PonyPrefixesNode": "Rating, Score, Source for Pony",
+    "ImageResizeNode": "Image Resize",
 }

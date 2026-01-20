@@ -1,6 +1,10 @@
 import comfy.samplers
 import folder_paths 
 import os
+import torch
+import torch.nn.functional as F
+import comfy
+from pathlib import Path
 
 
 def get_sampler_list():
@@ -312,7 +316,7 @@ class StringToFloatNode:
             return (0.0,)
 
 class TextConcatNode:
-       # modified node from Mikey-nodes by bash-j
+       # modified node TextConcat from https://github.com/bash-j/mikey_nodes
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -400,6 +404,7 @@ class ClipSkipSliderNode:
         return (value,)
 
 class PonyPrefixesNode:
+    
     
     """
     
@@ -504,4 +509,163 @@ class PonyPrefixesNode:
         result = "".join(parts)
 
         return (result,)
-    
+        
+class ImageResizeNode:
+    #ImageResizeNode is based on 🔧 Image Resize from https://github.com/cubiq/ComfyUI_essentials
+    """
+    Resize (compress/scale) an image with various methods.
+    """
+
+    # --------------------------------------------------------------------
+    # UI interface (what the user sees in the graph)
+    # --------------------------------------------------------------------
+    RETURN_TYPES = ("IMAGE", "INT", "INT")
+    RETURN_NAMES = ("IMAGE", "width", "height")
+    FUNCTION     = "execute"
+    CATEGORY     = "essentials/image manipulation"
+
+    @classmethod
+    def INPUT_TYPES(s):
+        """
+        Defines the inputs that appear in the UI.
+        """
+        return {
+            "required": {
+                # types that will be visible to the user in the UI
+                "image":          ("IMAGE",),
+
+                # integers – 0 means “do not change” (you can set a specific size)
+                "width":          ("INT", {"default": 512, "min": 0}),
+                "height":         ("INT", {"default": 512, "min": 0}),
+
+                # dropdown lists
+                "method":         (["stretch",
+                                      "keep proportion",
+                                      "fill / crop",
+                                      "pad"],),
+                "interpolation":  (["nearest",
+                                    "bilinear",
+                                    "bicubic",
+                                    "area",
+                                    "nearest-exact",
+                                    "lanczos"],),
+
+                # when to apply resizing
+                "condition":      (["always",
+                                    "downscale if bigger",
+                                    "upscale if smaller",
+                                    "if bigger area",
+                                    "if smaller area"],),
+            }
+        }
+
+    # --------------------------------------------------------------------
+    # Core logic
+    # --------------------------------------------------------------------
+    def execute(self,
+                image: torch.Tensor,
+                width: int,
+                height: int,
+                method: str = "stretch",
+                interpolation: str = "nearest",
+                condition: str = "always"):
+        """
+        Input:
+          image       – (B,H,W,C)
+          width,height – integers (0 → “don’t change”; can specify a size)
+          method      – stretch / keep proportion / fill / crop / pad
+          interpolation – interpolation method
+          condition   – when to perform resizing
+
+        Output: (IMAGE, new_width, new_height)
+        """
+        # -----------------------------
+        # 1. Original image dimensions
+        # -----------------------------
+        _, oh, ow, _ = image.shape
+
+        # -----------------------------
+        # 2. Determine target size and possible padding / coordinates
+        # -----------------------------
+        if method == "keep proportion":
+            ratio   = min(width / ow if width else float("inf"),
+                          height / oh if height else float("inf"))
+            new_w, new_h = round(ow * ratio), round(oh * ratio)
+            width, height = new_w, new_h
+            pad_left = pad_right = pad_top = pad_bottom = 0
+
+        elif method == "pad":
+            ratio   = min(width / ow if width else float("inf"),
+                          height / oh if height else float("inf"))
+            new_w, new_h = round(ow * ratio), round(oh * ratio)
+            pad_left  = (width - new_w) // 2
+            pad_right = width - new_w - pad_left
+            pad_top   = (height - new_h) // 2
+            pad_bottom= height - new_h - pad_top
+            width, height = new_w, new_h
+
+        elif method == "fill / crop":
+            target_w, target_h = width if width else ow, height if height else oh
+            ratio   = max(target_w / ow, target_h / oh)
+            new_w, new_h = round(ow * ratio), round(oh * ratio)
+
+            x  = (new_w - target_w) // 2
+            y  = (new_h - target_h) // 2
+            x2 = x + target_w
+            y2 = y + target_h
+
+            if x2 > new_w:   x -= (x2 - new_w)
+            if x < 0:        x = 0
+            if y2 > new_h:   y -= (y2 - new_h)
+            if y < 0:        y = 0
+
+            width, height = new_w, new_h
+
+        else:      # stretch or any unknown method
+            width  = width  if width  else ow
+            height = height if height else oh
+            pad_left = pad_right = pad_top = pad_bottom = 0
+
+        # -----------------------------
+        # 3. Resize condition (condition)
+        # -----------------------------
+        should_resize = (
+            condition == "always" or
+            ("downscale if bigger" == condition and (oh > height or ow > width)) or
+            ("upscale if smaller" == condition and (oh < height or ow < width)) or
+            ("bigger area" in condition and (oh * ow > height * width)) or
+            ("smaller area" in condition and (oh * ow < height * width))
+        )
+
+        if should_resize:
+            # Convert to format (B,C,H,W)
+            out = image.permute(0, 3, 1, 2)
+
+            # Choose interpolation mode
+            if interpolation == "lanczos" and comfy is not None:
+                out = comfy.utils.lanczos(out, width, height)
+            else:
+                kwargs = {"size": (height, width)}
+                if interpolation in ("linear", "bilinear", "bicubic", "trilinear"):
+                    # only for modes that support align_corners
+                    kwargs["align_corners"] = False
+                out = F.interpolate(out, mode=interpolation, **kwargs)
+
+            # If this is pad – add borders (value 0 → black background)
+            if method == "pad" and (pad_left or pad_right or pad_top or pad_bottom):
+                out = F.pad(out,
+                            (pad_left, pad_right, pad_top, pad_bottom),
+                            mode='constant',
+                            value=0)
+
+            # If this is fill / crop – cut the center of the image
+            if method == "fill / crop":
+                out = out[:, :, y:y2, x:x2]
+
+            out = out.permute(0, 2, 3, 1)   # back to (B,H,W,C)
+
+        else:
+            # If condition didn’t trigger – return original image
+            out = image
+
+        return out, width, height
