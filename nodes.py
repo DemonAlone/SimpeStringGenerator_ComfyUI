@@ -6,7 +6,6 @@ import torch.nn.functional as F
 import comfy
 from pathlib import Path
 
-
 def get_sampler_list():
     return ["none"] + comfy.samplers.KSampler.SAMPLERS
 
@@ -512,8 +511,11 @@ class PonyPrefixesNode:
         
 class ImageResizeNode:
 
-    # ImageResizeNode is based on 🔧 Image Resize from https://github.com/cubiq/ComfyUI_essentials
+    # ImageResizeNode is based on 🔧 Image Resize from Efficiency Nodes
     """
+    # Efficiency Nodes - A collection of my ComfyUI custom nodes to help streamline workflows and reduce total node count.
+    # by Luciano Cirino (Discord: TSC#9184) - April 2023 - October 2023
+    # https://github.com/LucianoCirino/efficiency-nodes-comfyui
     Resize an image and a mask synchronously.
     The mask is resized with nearest‑neighbor to keep its binary nature.
     """
