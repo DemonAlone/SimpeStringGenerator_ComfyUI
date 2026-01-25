@@ -935,6 +935,5 @@ class MaskDebugNode:
 
     def debug(self, mask):
         import torch
-        # squeeze лишний канал (если есть) и распечатать размерность
         t = mask.squeeze(-1) if mask.ndim == 4 and mask.shape[3] == 1 else mask
         return (f"shape={tuple(t.shape)}",)
