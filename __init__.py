@@ -22,6 +22,7 @@ from .nodes import (
     AnyConcatNode,
     OptionalCondMergeNode,
     ScaleImageAspectNode,
+    MaskDebugNode,
 )
 
 NODE_CLASS_MAPPINGS = {
@@ -48,6 +49,7 @@ NODE_CLASS_MAPPINGS = {
     "AnyConcatNode": AnyConcatNode,
     "OptionalCondMergeNode": OptionalCondMergeNode,
     "ScaleImageAspectNode": ScaleImageAspectNode,
+    "MaskDebugNode": MaskDebugNode,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -74,4 +76,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AnyConcatNode": "Any Concat",
     "OptionalCondMergeNode": "Optional Conditioning Merge",
     "ScaleImageAspectNode": "Scale Image",
+    "MaskDebugNode": "Mask Debug",
 }
