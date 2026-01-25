@@ -684,7 +684,7 @@ class ImageResizeNode:
                     msk = msk[:, :, y:y2, x:x2]
 
             # --- Return mask in format (B,H,W) ---
-            mask_out = msk.squeeze(-1)      # remove channel 1
+            mask_out = msk.squeeze(1)      # remove channel 1
         else:
             mask_out = None
 
@@ -924,3 +924,16 @@ class ScaleImageAspectNode:
 
         image_out = img_resized.permute(0, 2, 3, 1)   # back to (B, H, W, C)
         return (image_out,)
+        
+class MaskDebugNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {"mask": ("MASK",)}}
+
+    RETURN_TYPES = ("STRING",)
+    FUNCTION = "debug"
+
+    def debug(self, mask):
+        import torch
+        t = mask.squeeze(-1) if mask.ndim == 4 and mask.shape[3] == 1 else mask
+        return (f"shape={tuple(t.shape)}",)
