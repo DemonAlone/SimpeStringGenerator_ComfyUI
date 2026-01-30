@@ -23,6 +23,7 @@ from .nodes import (
     OptionalCondMergeNode,
     ScaleImageAspectNode,
     MaskDebugNode,
+    ShiftSliderNode,
 )
 
 NODE_CLASS_MAPPINGS = {
@@ -50,6 +51,7 @@ NODE_CLASS_MAPPINGS = {
     "OptionalCondMergeNode": OptionalCondMergeNode,
     "ScaleImageAspectNode": ScaleImageAspectNode,
     "MaskDebugNode": MaskDebugNode,
+    "ShiftSliderNode": ShiftSliderNode,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -77,4 +79,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "OptionalCondMergeNode": "Optional Conditioning Merge",
     "ScaleImageAspectNode": "Scale Image",
     "MaskDebugNode": "Mask Debug",
+    "ShiftSliderNode": "Shift Slider",
 }

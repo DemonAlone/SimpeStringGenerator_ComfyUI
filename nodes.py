@@ -7,6 +7,7 @@ import comfy
 from pathlib import Path
 import numpy as np
 from PIL import Image
+import nodes
 
 def get_sampler_list():
     return ["none"] + comfy.samplers.KSampler.SAMPLERS
@@ -510,7 +511,7 @@ class PonyPrefixesNode:
         result = "".join(parts)
 
         return (result,)
-        
+
 class ImageResizeNode:
 
     # ImageResizeNode is based on 🔧 Image Resize from Efficiency Nodes
@@ -924,7 +925,7 @@ class ScaleImageAspectNode:
 
         image_out = img_resized.permute(0, 2, 3, 1)   # back to (B, H, W, C)
         return (image_out,)
-        
+
 class MaskDebugNode:
     @classmethod
     def INPUT_TYPES(cls):
@@ -937,3 +938,25 @@ class MaskDebugNode:
         import torch
         t = mask.squeeze(-1) if mask.ndim == 4 and mask.shape[3] == 1 else mask
         return (f"shape={tuple(t.shape)}",)
+
+class ShiftSliderNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "shift": ("FLOAT", {"default": 0.0,
+                                    "min": 0.0,
+                                    "max": 100.0,
+                                    "step": 0.01})
+            }
+        }
+
+    RETURN_TYPES = ("FLOAT",)        
+    RETURN_NAMES = ("shift",)        
+
+    FUNCTION = "run"               
+    CATEGORY = "utils"      
+
+    def run(self, shift):
+       
+        return (shift,)                
