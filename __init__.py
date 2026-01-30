@@ -24,6 +24,8 @@ from .nodes import (
     ScaleImageAspectNode,
     MaskDebugNode,
     ShiftSliderNode,
+    DA_Base_KSampler,
+    DA_Enhanced_KSampler,
 )
 
 NODE_CLASS_MAPPINGS = {
@@ -52,6 +54,8 @@ NODE_CLASS_MAPPINGS = {
     "ScaleImageAspectNode": ScaleImageAspectNode,
     "MaskDebugNode": MaskDebugNode,
     "ShiftSliderNode": ShiftSliderNode,
+    "DA_Base_KSampler": DA_Base_KSampler,
+    "DA_Enhanced_KSampler": DA_Enhanced_KSampler,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -80,4 +84,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ScaleImageAspectNode": "Scale Image",
     "MaskDebugNode": "Mask Debug",
     "ShiftSliderNode": "Shift Slider",
+    "DA_Base_KSampler": "DA_Base_KSampler",
+    "DA_Enhanced_KSampler": "DA_Enhanced_KSampler",
 }

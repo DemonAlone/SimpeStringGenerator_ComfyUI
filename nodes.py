@@ -8,6 +8,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 import nodes
+import comfy.samplers
 
 def get_sampler_list():
     return ["none"] + comfy.samplers.KSampler.SAMPLERS
@@ -940,6 +941,7 @@ class MaskDebugNode:
         return (f"shape={tuple(t.shape)}",)
 
 class ShiftSliderNode:
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -960,3 +962,108 @@ class ShiftSliderNode:
     def run(self, shift):
        
         return (shift,)                
+
+# DA_Base_KSampler and DA_Enhanced_KSampler based on WAS_KSampler from https://github.com/WASasquatch/was-node-suite-comfyui (archived)
+
+# By WASasquatch (Discord: WAS#0263)
+#
+# Copyright 2023 Jordan Thompson (WASasquatch)
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to
+# deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+class DA_Base_KSampler:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "model": ("MODEL", ),
+                "seed": ("INT", {"default": 0, "min": 0,"max": 0xffffffffffffffff}),
+                "steps": ("INT", {"default": 28, "min": 1, "max": 10000}),
+                "cfg": ("FLOAT", {"default": 7.0, "min": 0.0, "max": 100.0}),
+                "sampler_name": (comfy.samplers.KSampler.SAMPLERS,),
+                "scheduler": (comfy.samplers.KSampler.SCHEDULERS,),
+                "positive": ("CONDITIONING", ),
+                "negative": ("CONDITIONING", ),
+                "latent_image": ("LATENT", ),
+                "denoise": ("FLOAT", {"default": 1.0, "min": 0.0,"max": 1.0, "step": 0.01}),
+                }}
+
+    RETURN_TYPES = ("LATENT",)
+    FUNCTION = "sample"
+    CATEGORY = "Sampling"
+
+    def sample(self, model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise=1.0):
+        return nodes.common_ksampler(model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise=denoise)
+
+class DA_Enhanced_KSampler:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "model": ("MODEL", ),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+                "shift": ("FLOAT", {"default": 3.0, "min": 0.0,"max": 100.0, "step":0.01}),
+                "steps": ("INT", {"default": 28, "min": 1, "max": 10000}),
+                "cfg": ("FLOAT", {"default": 7.0, "min": 0.0, "max": 100.0}),
+                "sampler_name": (comfy.samplers.KSampler.SAMPLERS,),
+                "scheduler": (comfy.samplers.KSampler.SCHEDULERS,),
+                "positive": ("CONDITIONING", ),
+                "negative": ("CONDITIONING", ),
+                "latent_image": ("LATENT", ),
+                "denoise": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01}),
+            }}
+
+    RETURN_TYPES = ("LATENT",)
+    FUNCTION = "sample"
+    CATEGORY = "Sampling"
+
+    # ----------Helper method----------
+    def _apply_shift(self, model: "MODEL", shift: float, multiplier: float = 1.0):
+        m = model.clone()
+        import comfy.model_sampling
+        sampling_base   = comfy.model_sampling.ModelSamplingDiscreteFlow
+        sampling_type   = comfy.model_sampling.CONST
+
+        class ModelSamplingAdvanced(sampling_base, sampling_type): pass
+
+        model_sampling = ModelSamplingAdvanced(model.model.model_config)
+        model_sampling.set_parameters(shift=shift, multiplier=multiplier)
+
+        m.add_object_patch("model_sampling", model_sampling)
+        return m
+    # -------------------------------------------
+
+    def sample(self,
+               model: "MODEL",
+               seed: int,
+               steps: int,
+               cfg: float,
+               sampler_name: str,
+               scheduler: str,
+               positive: "CONDITIONING",
+               negative: "CONDITIONING",
+               latent_image: "LATENT",
+               denoise: float = 1.0,
+               shift: float = 0.0):
+        if shift:
+            try:
+                model = self._apply_shift(model, shift)
+            except Exception as e:
+                print(f"[DA_Enhanced_KSampler] error applying Model_Shift: {e}")
+
+        return nodes.common_ksampler(
+            model,
+            seed, steps, cfg,
+            sampler_name, scheduler,
+            positive, negative,
+            latent_image,
+            denoise=denoise
+        )
