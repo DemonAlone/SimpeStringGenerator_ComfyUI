@@ -6,4 +6,6 @@ ImageResizeNode is based on 🔧 Image Resize from [ComfyUI_essentials](https://
 
 DA_Base_KSampler and DA_Enhanced_KSampler based on WAS_KSampler from [was-node-suite-comfyui](https://github.com/WASasquatch/was-node-suite-comfyui) (archived)
 
+LoadImageWithMetadataNode is based on CImageLoadWithMetadata from https://github.com/crystian/ComfyUI-Crystools
+
 Created with the assistance of Google Gemini and GPT-OSS.
