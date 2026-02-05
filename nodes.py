@@ -6,9 +6,17 @@ import torch.nn.functional as F
 import comfy
 from pathlib import Path
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
 import nodes
 import comfy.samplers
+import json
+import hashlib
+import fnmatch
+from PIL.JpegImagePlugin import JpegImageFile  
+from pathlib import Path
+from datetime import datetime
+from PIL.ExifTags import TAGS, GPSTAGS, IFD         
+from PIL.PngImagePlugin import PngImageFile  
 
 def get_sampler_list():
     return ["none"] + comfy.samplers.KSampler.SAMPLERS
@@ -44,6 +52,87 @@ def get_lora_list():
     """
     loras = folder_paths.get_filename_list("loras")      # <-- full path
     return ["none"] + loras
+    
+def build_metadata(image_path: str):
+    if not Path(image_path).is_file():
+        raise FileNotFoundError(f"File not found: {image_path}")
+
+    img = Image.open(image_path)
+
+    # 1. Basic file information -----------------------------------
+    fileinfo = {
+        "filename": str(Path(image_path)),
+        "resolution": f"{img.width}x{img.height}",
+        "date": datetime.fromtimestamp(os.path.getmtime(image_path)).isoformat(),
+        "size": str(round(os.path.getsize(image_path) / 1024**2, 2)) + " MB",
+    }
+    metadata = {"fileinfo": fileinfo}
+    prompt   = {}
+
+    # PNG metadata (img.info)
+    if isinstance(img, PngImageFile):
+        for k, v in img.info.items():
+            try:
+                # If the user commented arbitrary fields as JSON, parse them.
+                metadata[k] = json.loads(v)
+            except Exception:
+                metadata[k] = str(v)
+
+        # PNG usually contains prompt / workflow / parameters
+        if "prompt" in metadata:
+            try:
+                # ComfyUI stores this as a string, but the `raw` node already parses it as JSON and places it in the `prompt` key.
+                prompt.update(metadata["prompt"])
+            except Exception:
+                pass
+
+        if "workflow" in metadata:
+            try:
+                metadata["workflow"] = json.loads(metadata["workflow"])
+            except Exception:
+                pass
+
+        # In the 'raw' node, workflow is stored as a Python dict (not in `metadata`),
+        # but we put it here so that it appears in the output JSON.
+        prompt_from_image = prompt.update(metadata.get("prompt", {}))
+        if "workflow" in metadata:
+            try:
+                metadata["workflow"] = json.loads(metadata["workflow"])
+            except Exception:
+                pass
+
+    # JPEG EXIF
+    elif isinstance(img, JpegImageFile):
+        exif = img.getexif()
+        for k, v in exif.items():
+            tag = TAGS.get(k, k)
+            metadata[str(tag)] = str(v)
+
+    # WebP EXIF (prompt / workflow)
+    if img.format == "WEBP":
+        try:
+            import piexif
+            exif_data = piexif.load(image_path)
+            prompt_from_webp = exif_data.get('0th', {}).get(271, None)
+            if prompt_from_webp is not None:
+                raw_prompt = prompt_from_webp.decode("utf-8").replace("Prompt:", "", 1)
+                try:
+                    metadata["prompt"] = json.loads(raw_prompt)
+                except Exception:
+                    pass
+
+            workflow_data = exif_data.get('0th', {}).get(270, None)
+            if workflow_data is not None:
+                raw_workflow = workflow_data.decode("utf-8").replace("Workflow:", "", 1)
+                try:
+                    metadata["workflow"] = json.loads(raw_workflow)
+                except Exception:
+                    pass
+
+        except ValueError:   # piexif could not read
+            logger.warn("piexif error on WebP – ignore")
+
+    return img, prompt, metadata
     
 class SamplerGeneratorNode:
     @classmethod
@@ -1067,3 +1156,88 @@ class DA_Enhanced_KSampler:
             latent_image,
             denoise=denoise
         )
+
+#This node is based on CImageLoadWithMetadata from https://github.com/crystian/ComfyUI-Crystools
+class LoadImageWithMetadataNode:
+    """Loads an image from the input folder and returns a tensor,
+       mask (if there is an alpha channel) and two types of metadata: full RAW and 'clean' – only parameters."""
+    
+    @classmethod
+    def INPUT_TYPES(cls):
+        input_dir = folder_paths.get_input_directory()
+
+        exclude_files  = {"Thumbs.db", "*.DS_Store", "desktop.ini", "*.lock"}
+        exclude_folders = {"clipspace", ".*"}
+
+        file_list = []
+
+        for root, dirs, files in os.walk(input_dir, followlinks=True):
+            dirs[:]   = [d for d in dirs if not any(fnmatch.fnmatch(d, e) for e in exclude_folders)]
+            files     = [f for f in files if not any(fnmatch.fnmatch(f, e) for e in exclude_files)]
+
+            for file in files:
+                relpath = os.path.relpath(os.path.join(root, file), start=input_dir)
+                relpath = relpath.replace("\\", "/")          # windows patch
+                file_list.append(relpath)
+
+        return {"required": {"image": (sorted(file_list), {"image_upload": True})}}
+
+    CATEGORY = "Image"
+
+    # 4 outputs: image, mask, full RAW metadata, and 'clean' set only with parameters
+    RETURN_TYPES = ("IMAGE", "MASK", "METADATA_RAW", "METADATA_CLEAN")
+    RETURN_NAMES = ("image", "mask", "Metadata RAW", "Metadata Clean")
+
+    OUTPUT_NODE = True
+    FUNCTION   = "execute"
+
+    # ---------------------------------------------------------------
+    def execute(self, image):
+        """Main function. Returns the image tensor,
+           mask (if an alpha channel exists), full metadata and 'clean' parameters."""
+        image_path = folder_paths.get_annotated_filepath(image)
+
+        # build_metadata returns img, prompt (not used) and metadata
+        img, _, metadata = build_metadata(image_path)
+
+        # 1️. EXIF orientation handling
+        img = ImageOps.exif_transpose(img)
+
+        # 2️. Convert to tensor
+        image_tensor = torch.from_numpy(
+            np.array(img.convert("RGB")).astype(np.float32) / 255.0
+        )[None,]                     # [1,H,W,C]
+
+        # 3️. Mask (if there is an alpha channel)
+        if 'A' in img.getbands():
+            mask_np    = np.array(img.getchannel('A')).astype(np.float32) / 255.0
+            mask_torch = 1. - torch.from_numpy(mask_np)
+        else:
+            mask_torch = torch.zeros((64, 64), dtype=torch.float32)
+
+        # 4️.'Clean' metadata – only parameters (if they exist)
+        clean_meta = {}
+        if "parameters" in metadata:
+            clean_meta["parameters"] = metadata["parameters"]
+
+        # --- Return
+        return image_tensor, mask_torch.unsqueeze(0), metadata, clean_meta
+
+    # ---------------------------------------------------------------
+    @classmethod
+    def IS_CHANGED(cls, image):
+        """Check for changes to the image (SHA‑256)."""
+        image_path = folder_paths.get_annotated_filepath(image)
+        m = hashlib.sha256()
+        with open(image_path, 'rb') as f:
+            m.update(f.read())
+        return m.hexdigest()
+
+    # ---------------------------------------------------------------
+    @classmethod
+    def VALIDATE_INPUTS(cls, image):
+        """Check that the file exists."""
+        if not folder_paths.exists_annotated_filepath(image):
+            return f"Invalid image file: {image}"
+        return True
+   

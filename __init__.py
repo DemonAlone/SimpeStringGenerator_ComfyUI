@@ -26,6 +26,7 @@ from .nodes import (
     ShiftSliderNode,
     DA_Base_KSampler,
     DA_Enhanced_KSampler,
+    LoadImageWithMetadataNode,
 )
 
 NODE_CLASS_MAPPINGS = {
@@ -56,6 +57,7 @@ NODE_CLASS_MAPPINGS = {
     "ShiftSliderNode": ShiftSliderNode,
     "DA_Base_KSampler": DA_Base_KSampler,
     "DA_Enhanced_KSampler": DA_Enhanced_KSampler,
+    "LoadImageWithMetadataNode": LoadImageWithMetadataNode,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -86,4 +88,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ShiftSliderNode": "Shift Slider",
     "DA_Base_KSampler": "DA_Base_KSampler",
     "DA_Enhanced_KSampler": "DA_Enhanced_KSampler",
+    "LoadImageWithMetadataNode": "Load Image With Metadata"
 }
