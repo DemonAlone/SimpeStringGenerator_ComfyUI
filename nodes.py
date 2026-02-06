@@ -8,7 +8,6 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageOps
 import nodes
-import comfy.samplers
 import json
 import hashlib
 import fnmatch
@@ -1240,4 +1239,5 @@ class LoadImageWithMetadataNode:
         if not folder_paths.exists_annotated_filepath(image):
             return f"Invalid image file: {image}"
         return True
+
    
